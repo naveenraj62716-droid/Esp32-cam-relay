@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ESP32-CAM Live Viewer</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: #eee;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #bar {
+    width: 100%;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: space-between;
+    background: #1c1c1c;
+    font-size: 13px;
+  }
+  #status.online { color: #4caf50; }
+  #status.offline { color: #f44336; }
+  #frame {
+    max-width: 100%;
+    margin-top: 8px;
+    background: #000;
+  }
+  #hint {
+    margin-top: 40px;
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+    padding: 0 16px;
+  }
+</style>
+</head>
+<body>
+  <div id="bar">
+    <span id="status" class="offline">connecting...</span>
+    <span id="fps">0 fps</span>
+  </div>
+  <img id="frame" alt="stream" />
+  <div id="hint">Waiting for the first frame from the ESP32-CAM...</div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const fpsEl = document.getElementById("fps");
+    const imgEl = document.getElementById("frame");
+    const hintEl = document.getElementById("hint");
+
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let currentUrl = null;
+
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${location.host}/viewer`);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        statusEl.textContent = "connected, waiting for frames...";
+        statusEl.className = "online";
+      };
+
+      ws.onmessage = (event) => {
+        hintEl.style.display = "none";
+        const blob = new Blob([event.data], { type: "image/jpeg" });
+        const url = URL.createObjectURL(blob);
+        imgEl.src = url;
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        currentUrl = url;
+
+        frameCount++;
+        const now = performance.now();
+        if (now - lastFpsTime >= 1000) {
+          fpsEl.textContent = `${frameCount} fps`;
+          frameCount = 0;
+          lastFpsTime = now;
+        }
+        statusEl.textContent = "streaming";
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = "disconnected, retrying...";
+        statusEl.className = "offline";
+        setTimeout(connect, 2000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    connect();
+  </script>
+</body>
+</html>
