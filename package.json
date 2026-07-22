@@ -1,15 +1,13 @@
 {
   "name": "esp32-cam-relay",
   "version": "1.0.0",
-  "description": "Low-latency WebSocket relay for ESP32-CAM video streaming",
+  "description": "Relay server that forwards ESP32-CAM JPEG frames to browser viewers over WebSocket",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "express": "^4.19.2",
     "ws": "^8.17.0"
-  },
-  "engines": {
-    "node": ">=18"
   }
 }
